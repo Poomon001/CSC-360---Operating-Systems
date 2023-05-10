@@ -1,0 +1,3 @@
+/cygdrive/c/Users/Poomon/Desktop/programing projects/C/CSC 360/A00/Q2/cmake-build-debug/CMakeFiles/Q2.dir
+/cygdrive/c/Users/Poomon/Desktop/programing projects/C/CSC 360/A00/Q2/cmake-build-debug/CMakeFiles/edit_cache.dir
+/cygdrive/c/Users/Poomon/Desktop/programing projects/C/CSC 360/A00/Q2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
