@@ -19,8 +19,21 @@
 #include <stdlib.h>
 #include <wait.h>
 
+// TODO: remove this
+#include <stdio.h>
+
+#define MAX_INPUT_LINE 4
+#define MAX_NUM_TOKENS 8
 
 int main() {
+    char input[MAX_INPUT_LINE];
+    char* token[MAX_NUM_TOKENS];
+    char* t;
+    int i;
+    int num_tokens;
+    
+
+
     char *message = "Nothing working just yet... Stay tuned.\n";
     write(1, message, strlen(message));
 }

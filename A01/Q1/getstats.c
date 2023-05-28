@@ -56,7 +56,6 @@ void print_process_info(char* process_num) {
 
     FILE* file = fopen(path, "r");
 
-    // TODO: Does this check work?
     if(file == NULL) {
         printf("Process number %s not found\n", process_num);
         return;
@@ -125,12 +124,6 @@ void print_full_info() {
     printInfo(version, "", 0);
     printInfo(meminfo, "MemTotal", 0);
     printInfo(uptime, "", 1);
-
-    // TODO: What does it for?
-//     if(strncmp(substring, str, strlen(substring)) == 0) {
-//        fclose(0);
-//        return;
-//     }
 }
 
 
@@ -140,4 +133,3 @@ int main(int argc, char ** argv) {
     } else {
         print_process_info(argv[1]);
     }
-}
