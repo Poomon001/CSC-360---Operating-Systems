@@ -19,21 +19,63 @@
 #include <stdlib.h>
 #include <wait.h>
 
-// TODO: remove this
-#include <stdio.h>
-
+#define MAX_INPUT_CHAR 80
+#define MAX_NUM_TOKENS 9
 #define MAX_INPUT_LINE 4
-#define MAX_NUM_TOKENS 8
+
+void print(char* str);
+
+void print(char* str) {
+    write(1, str, strlen(str));
+    write(1, "\n", 1);
+}
 
 int main() {
-    char input[MAX_INPUT_LINE];
-    char* token[MAX_NUM_TOKENS];
-    char* t;
-    int i;
-    int num_tokens;
-    
+    char token[MAX_INPUT_LINE][MAX_NUM_TOKENS][MAX_INPUT_CHAR];
+    int numLines = 0;
+//    char *envp[] = { 0 };
 
+    for (int i = 0; i < MAX_INPUT_LINE; i++) {
+        int numTokens = 0;
+        char input[MAX_INPUT_CHAR];
+        char* t;
+        int bytesRead;
 
-    char *message = "Nothing working just yet... Stay tuned.\n";
-    write(1, message, strlen(message));
+        // take input
+        print("Enter strings:");
+        bytesRead = read(STDIN_FILENO, input, sizeof(input));
+
+        // exit if input is mere an enter
+        // TODO: Cannot use fflush(stdout)?
+        if (bytesRead == 0 || bytesRead == 1) {
+            print("Exit");
+            break;
+        }
+
+        if (bytesRead > 0) {
+            if (input[bytesRead - 1] == '\n') {
+                input[bytesRead - 1] = '\0';
+            }
+
+            t = strtok(input, " ");
+
+            token[numLines][numTokens][0] = '\0';  // Add null terminator to all unused empty space
+            while (t != NULL && numTokens < MAX_NUM_TOKENS) {
+                strcpy(token[numLines][numTokens], t);
+                numTokens++;
+                t = strtok(NULL, " ");
+            }
+        }
+
+        numLines++;
+    }
+
+    for (int i = 0; i < numLines; i++) {
+        int j = 0;
+        while (token[i][j][0] != '\0') {
+            print(token[i][j++]);
+        }
+    }
+//    char *args[] = { "/usr/bin/ls", "-1", 0 };
+//    execve(args[0], args, envp);
 }
