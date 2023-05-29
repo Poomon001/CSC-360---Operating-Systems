@@ -20,7 +20,7 @@
 #include <wait.h>
 
 #define MAX_INPUT_CHAR 80
-#define MAX_NUM_TOKENS 9
+#define MAX_NUM_TOKENS 8
 #define MAX_INPUT_LINE 4
 
 void print(char* str);
@@ -34,6 +34,9 @@ int main() {
     char token[MAX_INPUT_LINE][MAX_NUM_TOKENS][MAX_INPUT_CHAR];
     int numLines = 0;
 //    char *envp[] = { 0 };
+
+    // Initialize the token array with '\0'
+    memset(token, '\0', sizeof(token));
 
     for (int i = 0; i < MAX_INPUT_LINE; i++) {
         int numTokens = 0;
@@ -59,14 +62,12 @@ int main() {
 
             t = strtok(input, " ");
 
-            token[numLines][numTokens][0] = '\0';  // Add null terminator to all unused empty space
             while (t != NULL && numTokens < MAX_NUM_TOKENS) {
                 strcpy(token[numLines][numTokens], t);
                 numTokens++;
                 t = strtok(NULL, " ");
             }
         }
-
         numLines++;
     }
 
@@ -76,6 +77,7 @@ int main() {
             print(token[i][j++]);
         }
     }
+
 //    char *args[] = { "/usr/bin/ls", "-1", 0 };
 //    execve(args[0], args, envp);
 }
