@@ -45,12 +45,10 @@ int main() {
         int bytesRead;
 
         // take input
-        print("Enter strings:");
         bytesRead = read(STDIN_FILENO, input, sizeof(input));
 
         // exit if input is mere an enter
         if (bytesRead == 0 || bytesRead == 1) {
-            print("Exit");
             break;
         }
 
@@ -110,9 +108,148 @@ int main() {
         }
     }
 
-    execve(cmd2[0], cmd2, envp);
+    // pipe commands
+    int pid1, pid2, pid3, pid4;
+    int fd1[2], fd2[2], fd3[2];
+    int status;
 
+    pipe(fd1);
+    pipe(fd2);
+    pipe(fd3);
+
+    pid1 = fork();
+    if (pid1 == 0) {
+        if (cmd1[0] != NULL && cmd2[0] != NULL) {
+            dup2(fd1[1], 1);
+            close(fd1[0]);
+            execve(cmd1[0], cmd1, envp);
+        } else {
+            execve(cmd1[0], cmd1, envp);
+        }
+    }
+
+    pid2 = fork();
+    if (pid2 == 0) {
+        if (cmd2[0] != NULL && cmd3[0] != NULL) {
+            dup2(fd1[0], 0);
+            dup2(fd2[1], 1);
+            close(fd1[1]);
+            close(fd2[0]);
+            execve(cmd2[0], cmd2, envp);
+        } else {
+            dup2(fd1[0], 0);
+            close(fd1[1]);
+            execve(cmd2[0], cmd2, envp);
+        }
+    }
+
+    close(fd1[1]);
+    close(fd1[0]);
+
+    pid3 = fork();
+    if (pid3 == 0) {
+        if (cmd3[0] != NULL && cmd4[0] != NULL) {
+            dup2(fd2[0], 0);
+            dup2(fd3[1], 1);
+            close(fd2[1]);
+            close(fd3[0]);
+            execve(cmd3[0], cmd3, envp);
+        } else {
+            dup2(fd2[0], 0);
+            close(fd2[1]);
+            execve(cmd3[0], cmd3, envp);
+        }
+    }
+
+    close(fd2[0]);
+    close(fd2[1]);
+
+    pid4 = fork();
+    if (pid4 == 0) {
+        if (cmd4[0] != NULL) {
+            dup2(fd3[0], 0);
+            close(fd3[1]);
+            execve(cmd4[0], cmd4, envp);
+        }
+    }
+
+    close(fd3[0]);
+    close(fd3[1]);
+
+    waitpid(pid1, &status, 0);
+    waitpid(pid2, &status, 0);
+    waitpid(pid3, &status, 0);
+    waitpid(pid4, &status, 0);
+    ///////////////////////////
+
+/*    int pid1, pid3;
+    int fd1[2];
+    int status;
+
+    pipe(fd1);
+
+    pid1 = fork();
+    if (pid1 == 0) {
+        dup2(fd1[1], 1);
+        close(fd1[0]);
+        execve(cmd1[0], cmd1, envp);
+    }
+
+    pid3 = fork();
+    if (pid3 == 0) {
+        dup2(fd1[0], 0);
+        close(fd1[1]);
+        execve(cmd2[0], cmd2, envp);
+    }
+
+    close(fd1[0]);
+    close(fd1[1]);
+
+    waitpid(pid1, &status, 0);
+    waitpid(pid3, &status, 0);*/
+
+    ///////////////////////////
+
+
+//    pid1 = fork();
+//    if (pid1 == 0) {
+//        dup2(fd1[1], 1);
+//        close(fd1[0]);
+//        execve(cmd1[0], cmd1, envp);
+//    }
+//
+//    pid2 = fork();
+//    if (pid2 == 0) {
+//        dup2(fd1[0], 0);
+//        dup2(fd2[1], 1);
+//        close(fd1[1]);
+//        close(fd2[0]);
+//        execve(cmd2[0], cmd2, envp);
+//    }
+//
+//    close(fd1[1]);
+//    close(fd1[0]);
+//    waitpid(pid1, &status, 0);
+//    waitpid(pid2, &status, 0);
+//
+//    pid3 = fork();
+//    if (pid3 == 0) {
+//        dup2(fd2[0], 0);
+//        close(fd2[1]);
+//        execve(cmd3[0], cmd3, envp);
+//    }
+//
+//    close(fd1[0]);
+//    close(fd1[1]);
+//    close(fd2[0]);
+//    close(fd2[1]);
+//
+//    waitpid(pid3, &status, 0);
+
+
+    ///////////////////
     return 0;
 //    char *args[] = { "/usr/bin/ls", "-l -a -h", 0 };
-      execve(cmd1[0], cmd1, envp);
+      // execve(cmd1[0], cmd1, envp);
+//    /usr/bin/gcc --help | /usr/bin/grep dump | /usr/bin/tr ’[:lower:]’ ’[:upper:]’ | /usr/bin/wc
 }
