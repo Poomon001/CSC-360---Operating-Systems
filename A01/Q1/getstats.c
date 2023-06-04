@@ -50,14 +50,13 @@ void printSumSwitches(char* filePath, char* switches1, char* switches2) {
 }
 
 void print_process_info(char* process_num) {
-    // TODO: Can we assumne 255?
     char path[255] = "/proc/";
     strcat(path, process_num);
 
     FILE* file = fopen(path, "r");
 
     if(file == NULL) {
-        printf("Process number %s not found\n", process_num);
+        printf("Process number %s not found.\n", process_num);
         return;
     }
 
@@ -72,9 +71,8 @@ void print_process_info(char* process_num) {
     printf("Process number: %s\n", process_num);
     printInfo(statusPath, "Name", 0);
     printf("Filename (if any): ");
-    printInfo(cmdlinePath, "", 0); // TODO: Is this correct?
+    printInfo(cmdlinePath, "", 0);
     printInfo(statusPath, "Threads", 0);
-    // TODO: Is these switches correct?
     printSumSwitches(statusPath, "voluntary_ctxt_switches", "nonvoluntary_ctxt_switches");
 }
 
@@ -90,7 +88,6 @@ void printTimeFromInfo(char* time) {
     minutes = uptime / 60;
     uptime -= minutes * 60;
 
-    // TODO: Do we need to calculate them manully?
     printf("Uptime: %ld days, %ld hours, %ld minutes, %ld seconds\n", days, hours, minutes, (long)uptime);
 }
 
@@ -127,9 +124,10 @@ void print_full_info() {
 }
 
 
-int main(int argc, char ** argv) {  
+int main(int argc, char ** argv) {
     if (argc == 1) {
         print_full_info();
     } else {
         print_process_info(argv[1]);
     }
+}

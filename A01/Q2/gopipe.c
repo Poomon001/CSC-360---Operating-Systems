@@ -23,13 +23,6 @@
 #define MAX_NUM_TOKENS 8
 #define MAX_INPUT_LINE 4
 
-void print(char* str);
-
-void print(char* str) {
-    write(1, str, strlen(str));
-    write(1, "\n", 1);
-}
-
 int main() {
     char token[MAX_INPUT_LINE][MAX_NUM_TOKENS][MAX_INPUT_CHAR];
     int numLines = 0;
