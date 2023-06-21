@@ -1,0 +1,1 @@
+# These program only works on linux. Window and MacOs require different libraries to manipulate threads.
