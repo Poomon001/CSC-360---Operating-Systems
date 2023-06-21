@@ -204,12 +204,17 @@ void *h_ready( void *arg )
         num_free_h -= 1;
         radicals += 1;
 
+        sem_post(&wait_c);
+        sem_post(&wait_c);
+        sem_post(&wait_h);
+
         // log made radical
-        make_radical(num_free_c - 1, num_free_c,  num_free_h, "c_ready");
+        make_radical(combining_c1, combining_c2,  id, name);
     }
 
-
     sem_post(&mutex);
+    sem_wait(&wait_h);
+    combining_h = id;
 
 #ifdef VERBOSE
     printf("%s now exists\n", name);
@@ -241,11 +246,26 @@ void *c_ready( void *arg )
         num_free_h -= 1;
         radicals += 1;
 
-        // log made radical
-        make_radical(num_free_c -1, num_free_c, num_free_h, "h_ready");
+        sem_post(&wait_c);
+        sem_post(&wait_c);
+        sem_post(&wait_h);
+
+        if(combining_c1 < combining_c2) {
+            // log made radical
+            make_radical(id, combining_c2, combining_h, name);
+        } else {
+            // log made radical
+            make_radical(combining_c1, id, combining_h, name);
+        }
     }
 
     sem_post(&mutex);
+    sem_wait(&wait_c);
+    if(combining_c1 < combining_c2){
+        combining_c1 = id;
+    } else {
+        combining_c2 = id;
+    }
 
 
 
