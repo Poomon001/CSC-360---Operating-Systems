@@ -176,9 +176,9 @@ void kosmos_init() {
     combining_c2 = 0;
     combining_h = 0;
     sem_init(&mutex, 0, 1);
-    sem_init(&wait_c, 0, 0);
-    sem_init(&wait_h, 0, 0);
-    sem_init(&staging_area, 0, 0);
+    sem_init(&wait_c, 0, 1);
+    sem_init(&wait_h, 0, 1);
+    sem_init(&staging_area, 0, 1);
 }
 
 
@@ -197,24 +197,31 @@ void *h_ready( void *arg )
     // update combining_h to current id
     num_free_h += 1;
 
+    sem_post(&mutex);
+
+    // should assign id to combining_h per each radical made
+    sem_wait(&wait_h);
+    combining_h = id;
+
     // Check if a radical are ready to make
     if (num_free_c >= 2 && num_free_h >= 1) {
+        sem_wait(&staging_area);
         // Make radicals
         num_free_c -= 2;
         num_free_h -= 1;
         radicals += 1;
 
-        sem_post(&wait_c);
-        sem_post(&wait_c);
-        sem_post(&wait_h);
-
         // log made radical
-        make_radical(combining_c1, combining_c2,  id, name);
+        make_radical(combining_c1, combining_c2, id, name);
+
+        combining_c1 = 0;
+        combining_c2 = 0;
+        combining_h = 0;
+        sem_post(&staging_area);
     }
 
-    sem_post(&mutex);
-    sem_wait(&wait_h);
-    combining_h = id;
+    sem_post(&wait_c);
+    sem_post(&wait_c);
 
 #ifdef VERBOSE
     printf("%s now exists\n", name);
@@ -239,34 +246,35 @@ void *c_ready( void *arg )
     // update combining_c to current id
     num_free_c += 1;
 
-    // Check if a radical are ready to make
-    if (num_free_c >= 2 && num_free_h >= 1) {
-        // Make radicals
-        num_free_c -= 2;
-        num_free_h -= 1;
-        radicals += 1;
-
-        sem_post(&wait_c);
-        sem_post(&wait_c);
-        sem_post(&wait_h);
-
-        if(combining_c1 < combining_c2) {
-            // log made radical
-            make_radical(id, combining_c2, combining_h, name);
-        } else {
-            // log made radical
-            make_radical(combining_c1, id, combining_h, name);
-        }
-    }
-
     sem_post(&mutex);
+
+    // should assign id to combining_c per each radical made
     sem_wait(&wait_c);
-    if(combining_c1 < combining_c2){
+    if(combining_c1 == 0){
         combining_c1 = id;
     } else {
         combining_c2 = id;
     }
 
+    // Check if a radical are ready to make
+    if (num_free_c >= 2 && num_free_h >= 1) {
+        sem_wait(&staging_area);
+        // Make radicals
+        num_free_c -= 2;
+        num_free_h -= 1;
+        radicals += 1;
+
+        make_radical(combining_c1, combining_c2, combining_h, name);
+
+        combining_c1 = 0;
+        combining_c2 = 0;
+        combining_h = 0;
+        sem_post(&staging_area);
+    }
+
+    if(combining_c1 == 0){
+        sem_post(&wait_h);
+    }
 
 
 #ifdef VERBOSE
