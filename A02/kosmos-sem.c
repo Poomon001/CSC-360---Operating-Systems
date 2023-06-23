@@ -162,6 +162,8 @@ sem_t mutex;
 sem_t wait_c;
 sem_t wait_h;
 sem_t staging_area;
+sem_t h_queue;
+sem_t c_queue;
 
 
 /*
@@ -181,47 +183,59 @@ void kosmos_init() {
     sem_init(&staging_area, 0, 1);
 }
 
+void setCombinder(int id, char* name, char* status) {
+    if(combining_h == 0 && combining_c1 != 0 && combining_c2 != 0) {
+        sprintf(combiner, "h%03d", id);
+    } else if(combining_h != 0 && combining_c1 == 0 && combining_c2 != 0) {
+        sprintf(combiner, "c%03d", id);
+    } else if(combining_h != 0 && combining_c1 != 0 && combining_c2 == 0) {
+        sprintf(combiner, "c%03d", id);
+    }
+
+    // tester
+    printf("After Name: %s, H: %d, C1: %d, C2: %d, countH: %d, countC: %d, id: %d, combiner: %s, status: %s\n", name, combining_h, combining_c1, combining_c2, num_free_h, num_free_c, id, combiner, status);
+}
+
+void tryToCreateRadical(){
+    // Check if a radical are ready to make
+    sem_wait(&staging_area);
+    if (num_free_c >= 2 && num_free_h >= 1) {
+        // Make radicals
+        num_free_c -= 2;
+        num_free_h -= 1;
+        radicals += 1;
+        kosmos_log_add_entry(radicals, combining_c1, combining_c2, combining_h, combiner);
+
+        combining_c1 = 0;
+        combining_c2 = 0;
+        combining_h = 0;
+
+        // to prevent race condition if unlock mutex when no locked mutex
+        sem_post(&wait_c);
+        sem_post(&wait_h);
+    }
+    sem_post(&staging_area);
+}
 
 void *h_ready( void *arg )
 {
     int id = *((int *)arg);
     char name[MAX_ATOM_NAME_LEN];
-
     sprintf(name, "h%03d", id);
 
-    // Add mutex to lock critical section
-    sem_wait(&mutex);
-
-    // Wait for other c and h atoms
-    // add one atom to num_free_h
-    // update combining_h to current id
-    num_free_h += 1;
-
-    sem_post(&mutex);
-
-    // should assign id to combining_h per each radical made
     sem_wait(&wait_h);
-    combining_h = id;
 
-    // Check if a radical are ready to make
-    if (num_free_c >= 2 && num_free_h >= 1) {
-        sem_wait(&staging_area);
-        // Make radicals
-        num_free_c -= 2;
-        num_free_h -= 1;
-        radicals += 1;
+    // Add mutex to lock critical section
+    sem_wait(&mutex); // start
 
-        // log made radical
-        make_radical(combining_c1, combining_c2, id, name);
-
-        combining_c1 = 0;
-        combining_c2 = 0;
-        combining_h = 0;
-        sem_post(&staging_area);
+    // free space can assign
+    if(combining_h == 0){
+        setCombinder(id, name, "Non-wait");
+        num_free_h += 1;
+        combining_h = id;
+        tryToCreateRadical();
     }
-
-    sem_post(&wait_c);
-    sem_post(&wait_c);
+    sem_post(&mutex);
 
 #ifdef VERBOSE
     printf("%s now exists\n", name);
@@ -230,52 +244,33 @@ void *h_ready( void *arg )
     return NULL;
 }
 
+// wait for slot c1, c2, or h. If the space is full wait.
 
 void *c_ready( void *arg )
 {
     int id = *((int *)arg);
     char name[MAX_ATOM_NAME_LEN];
-
     sprintf(name, "c%03d", id);
 
+    sem_wait(&wait_c); // c_T3, c_T4, and c_T5 wait for space
+
     // Add mutex to lock critical section
-    sem_wait(&mutex);
-
-    // wait for more h or c to make a radical
-    // add one atom to num_free_c
-    // update combining_c to current id
-    num_free_c += 1;
-
-    sem_post(&mutex);
-
-    // should assign id to combining_c per each radical made
-    sem_wait(&wait_c);
+    sem_wait(&mutex); // start here
+    // free c1 space to assign
     if(combining_c1 == 0){
+        setCombinder(id, name, "Non-wait");
+        num_free_c += 1;
         combining_c1 = id;
-    } else {
+        tryToCreateRadical();
+        sem_post(&wait_c);
+        sem_post(&mutex);
+    } else if(combining_c2 == 0) {
+        setCombinder(id, name, "Non-wait");
+        num_free_c += 1;
         combining_c2 = id;
+        tryToCreateRadical();
+        sem_post(&mutex);
     }
-
-    // Check if a radical are ready to make
-    if (num_free_c >= 2 && num_free_h >= 1) {
-        sem_wait(&staging_area);
-        // Make radicals
-        num_free_c -= 2;
-        num_free_h -= 1;
-        radicals += 1;
-
-        make_radical(combining_c1, combining_c2, combining_h, name);
-
-        combining_c1 = 0;
-        combining_c2 = 0;
-        combining_h = 0;
-        sem_post(&staging_area);
-    }
-
-    if(combining_c1 == 0){
-        sem_post(&wait_h);
-    }
-
 
 #ifdef VERBOSE
     printf("%s now exists\n", name);
