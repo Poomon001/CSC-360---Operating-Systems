@@ -260,7 +260,7 @@ void *c_ready( void *arg )
         num_free_c += 1;
         combining_c1 = id;
         tryToCreateRadical();
-        sem_post(&wait_c);
+        sem_post(&wait_c); // allow to send C to get in
         sem_post(&mutex);
     } else if(combining_c2 == 0) {
         setCombinder(id, name, "Non-wait");
