@@ -44,65 +44,65 @@ void wait_to_terminate(int);
 /* Needed to pass legit copy of an integer argument to a pthread */
 int *dupInt( int i )
 {
-	int *pi = (int *)malloc(sizeof(int));
-	assert( pi != NULL);
-	*pi = i;
-	return pi;
+    int *pi = (int *)malloc(sizeof(int));
+    assert( pi != NULL);
+    *pi = i;
+    return pi;
 }
 
 
 int main(int argc, char *argv[])
 {
-	long seed;
-	numAtoms = DEFAULT_NUM_ATOMS;
-	pthread_t **atom;
-	int i;
-	int status;
+    long seed;
+    numAtoms = DEFAULT_NUM_ATOMS;
+    pthread_t **atom;
+    int i;
+    int status;
 
-	if ( argc < 2 ) {
-		fprintf(stderr, "usage: %s <seed> [<num atoms>]\n", argv[0]);
-		exit(1);
-	}
+    if ( argc < 2 ) {
+        fprintf(stderr, "usage: %s <seed> [<num atoms>]\n", argv[0]);
+        exit(1);
+    }
 
-	if ( argc >= 2) {
-		seed = atoi(argv[1]);
-	}
+    if ( argc >= 2) {
+        seed = atoi(argv[1]);
+    }
 
-	if (argc == 3) {
-		numAtoms = atoi(argv[2]);
-		if (numAtoms < 0) {
-			fprintf(stderr, "%ld is not a valid number of atoms\n",
-				numAtoms);
-			exit(1);
-		}
-	}
+    if (argc == 3) {
+        numAtoms = atoi(argv[2]);
+        if (numAtoms < 0) {
+            fprintf(stderr, "%ld is not a valid number of atoms\n",
+                    numAtoms);
+            exit(1);
+        }
+    }
 
     kosmos_log_init();
-	kosmos_init();
+    kosmos_init();
 
-	srand(seed);
-	atom = (pthread_t **)malloc(numAtoms * sizeof(pthread_t *));
-	assert (atom != NULL);
-	for (i = 0; i < numAtoms; i++) {
-		atom[i] = (pthread_t *)malloc(sizeof(pthread_t));
-		if ( (double)rand()/(double)RAND_MAX < ATOM_THRESHOLD ) {
-			hNum++;
-			status = pthread_create (
-					atom[i], NULL, h_ready,
-					(void *)dupInt(hNum)
-				);
-		} else {
-			cNum++;
-			status = pthread_create (
-					atom[i], NULL, c_ready,
-					(void *)dupInt(cNum)
-				);
-		}
-		if (status != 0) {
-			fprintf(stderr, "Error creating atom thread\n");
-			exit(1);
-		}
-	}
+    srand(seed);
+    atom = (pthread_t **)malloc(numAtoms * sizeof(pthread_t *));
+    assert (atom != NULL);
+    for (i = 0; i < numAtoms; i++) {
+        atom[i] = (pthread_t *)malloc(sizeof(pthread_t));
+        if ( (double)rand()/(double)RAND_MAX < ATOM_THRESHOLD ) {
+            hNum++;
+            status = pthread_create (
+                    atom[i], NULL, h_ready,
+                    (void *)dupInt(hNum)
+            );
+        } else {
+            cNum++;
+            status = pthread_create (
+                    atom[i], NULL, c_ready,
+                    (void *)dupInt(cNum)
+            );
+        }
+        if (status != 0) {
+            fprintf(stderr, "Error creating atom thread\n");
+            exit(1);
+        }
+    }
 
     /* Determining the maximum number of ethynyl radicals is fairly
      * straightforward -- it will be the minimum of the number of
@@ -145,6 +145,19 @@ int main(int argc, char *argv[])
 /* 
  * DECLARE / DEFINE NEEDED VARIABLES IMMEDIATELY BELOW.
  */
+int radicals;
+int num_free_c;
+int num_free_h;
+
+int combining_c1;
+int combining_c2;
+int combining_h;
+char combiner[MAX_ATOM_NAME_LEN];
+
+pthread_mutex_t mutex;
+pthread_mutex_t wait_c;
+pthread_mutex_t wait_h;
+pthread_mutex_t staging_area;
 
 
 
@@ -153,36 +166,115 @@ int main(int argc, char *argv[])
  */
 
 void kosmos_init() {
+    radicals = 0;
+    num_free_c = cNum;
+    num_free_h = hNum;
+    combining_c1 = 0;
+    combining_c2 = 0;
+    combining_h = 0;
+    pthread_mutex_init(&mutex, NULL);
+    pthread_mutex_init(&wait_c, NULL);
+    pthread_mutex_init(&wait_h, NULL);
+    pthread_mutex_init(&staging_area, NULL);
 }
 
+void setCombinder(int id, char* name, char* status) {
+    if (combining_h == 0 && combining_c1 != 0 && combining_c2 != 0) {
+        sprintf(combiner, "h%03d", id);
+    } else if (combining_h != 0 && combining_c1 == 0 && combining_c2 != 0) {
+        sprintf(combiner, "c%03d", id);
+    } else if (combining_h != 0 && combining_c1 != 0 && combining_c2 == 0) {
+        sprintf(combiner, "c%03d", id);
+    }
+
+    // tester
+    printf("After Name: %s, H: %d, C1: %d, C2: %d, countH: %d, countC: %d, id: %d, combiner: %s, status: %s\n", name, combining_h, combining_c1, combining_c2, num_free_h, num_free_c, id, combiner, status);
+}
+
+void tryToCreateRadical() {
+    // Check if a radical is ready to be made
+    pthread_mutex_lock(&staging_area);
+    if (num_free_c >= 2 && num_free_h >= 1) {
+        // Make a radical
+        num_free_c -= 2;
+        num_free_h -= 1;
+        radicals += 1;
+        kosmos_log_add_entry(radicals, combining_c1, combining_c2, combining_h, combiner);
+
+        combining_c1 = 0;
+        combining_c2 = 0;
+        combining_h = 0;
+
+        // Unlock mutexes to prevent race condition
+        pthread_mutex_unlock(&wait_c);
+        pthread_mutex_unlock(&wait_h);
+    }
+    pthread_mutex_unlock(&staging_area);
+}
 
 void *h_ready( void *arg )
 {
-	int id = *((int *)arg);
+    int id = *((int *)arg);
     char name[MAX_ATOM_NAME_LEN];
 
     sprintf(name, "h%03d", id);
 
+    pthread_mutex_lock(&wait_h);
+
+    // Lock the mutex for critical section
+    pthread_mutex_lock(&mutex);
+
+    // Check for free space
+    if (combining_h == 0) {
+        setCombinder(id, name, "Non-wait");
+        num_free_h += 1;
+        combining_h = id;
+        tryToCreateRadical();
+    }
+
+    pthread_mutex_unlock(&mutex);
+
 #ifdef VERBOSE
-	printf("%s now exists\n", name);
+    printf("%s now exists\n", name);
 #endif
 
-	return NULL;
+    return NULL;
 }
 
 
 void *c_ready( void *arg )
 {
-	int id = *((int *)arg);
+    int id = *((int *)arg);
     char name[MAX_ATOM_NAME_LEN];
 
     sprintf(name, "c%03d", id);
 
+    pthread_mutex_lock(&wait_c);
+
+    // Lock the mutex for critical section
+    pthread_mutex_lock(&mutex);
+
+    // Check for free c1 space
+    if (combining_c1 == 0) {
+        setCombinder(id, name, "Non-wait");
+        num_free_c += 1;
+        combining_c1 = id;
+        tryToCreateRadical();
+        pthread_mutex_unlock(&wait_c);
+        pthread_mutex_unlock(&mutex);
+    } else if (combining_c2 == 0) {
+        setCombinder(id, name, "Non-wait");
+        num_free_c += 1;
+        combining_c2 = id;
+        tryToCreateRadical();
+        pthread_mutex_unlock(&mutex);
+    }
+
 #ifdef VERBOSE
-	printf("%s now exists\n", name);
+    printf("%s now exists\n", name);
 #endif
 
-	return NULL;
+    return NULL;
 }
 
 
