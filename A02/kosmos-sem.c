@@ -162,8 +162,6 @@ sem_t mutex;
 sem_t wait_c;
 sem_t wait_h;
 sem_t staging_area;
-sem_t h_queue;
-sem_t c_queue;
 
 
 /*

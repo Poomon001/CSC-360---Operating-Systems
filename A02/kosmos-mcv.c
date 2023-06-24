@@ -53,69 +53,68 @@ int *dupInt( int i )
 
 int main(int argc, char *argv[])
 {
-    printf("hello");
-//	long seed;
-//	numAtoms = DEFAULT_NUM_ATOMS;
-//	pthread_t **atom;
-//	int i;
-//	int status;
-//
-//	if ( argc < 2 ) {
-//		fprintf(stderr, "usage: %s <seed> [<num atoms>]\n", argv[0]);
-//		exit(1);
-//	}
-//
-//	if ( argc >= 2) {
-//		seed = atoi(argv[1]);
-//	}
-//
-//	if (argc == 3) {
-//		numAtoms = atoi(argv[2]);
-//		if (numAtoms < 0) {
-//			fprintf(stderr, "%ld is not a valid number of atoms\n",
-//				numAtoms);
-//			exit(1);
-//		}
-//	}
-//
-//    kosmos_log_init();
-//	kosmos_init();
-//
-//	srand(seed);
-//	atom = (pthread_t **)malloc(numAtoms * sizeof(pthread_t *));
-//	assert (atom != NULL);
-//	for (i = 0; i < numAtoms; i++) {
-//		atom[i] = (pthread_t *)malloc(sizeof(pthread_t));
-//		if ( (double)rand()/(double)RAND_MAX < ATOM_THRESHOLD ) {
-//			hNum++;
-//			status = pthread_create (
-//					atom[i], NULL, h_ready,
-//					(void *)dupInt(hNum)
-//				);
-//		} else {
-//			cNum++;
-//			status = pthread_create (
-//					atom[i], NULL, c_ready,
-//					(void *)dupInt(cNum)
-//				);
-//		}
-//		if (status != 0) {
-//			fprintf(stderr, "Error creating atom thread\n");
-//			exit(1);
-//		}
-//	}
-//
-//    /* Determining the maximum number of ethynyl radicals is fairly
-//     * straightforward -- it will be the minimum of the number of
-//     * hNum and cNum/2.
-//     */
-//
-//    int max_radicals = (hNum < cNum/2 ? hNum : (int)(cNum/2));
-//#ifdef VERBOSE
-//    printf("Maximum # of radicals expected: %d\n", max_radicals);
-//#endif
-//
-//    wait_to_terminate(max_radicals);
+	long seed;
+	numAtoms = DEFAULT_NUM_ATOMS;
+	pthread_t **atom;
+	int i;
+	int status;
+
+	if ( argc < 2 ) {
+		fprintf(stderr, "usage: %s <seed> [<num atoms>]\n", argv[0]);
+		exit(1);
+	}
+
+	if ( argc >= 2) {
+		seed = atoi(argv[1]);
+	}
+
+	if (argc == 3) {
+		numAtoms = atoi(argv[2]);
+		if (numAtoms < 0) {
+			fprintf(stderr, "%ld is not a valid number of atoms\n",
+				numAtoms);
+			exit(1);
+		}
+	}
+
+    kosmos_log_init();
+	kosmos_init();
+
+	srand(seed);
+	atom = (pthread_t **)malloc(numAtoms * sizeof(pthread_t *));
+	assert (atom != NULL);
+	for (i = 0; i < numAtoms; i++) {
+		atom[i] = (pthread_t *)malloc(sizeof(pthread_t));
+		if ( (double)rand()/(double)RAND_MAX < ATOM_THRESHOLD ) {
+			hNum++;
+			status = pthread_create (
+					atom[i], NULL, h_ready,
+					(void *)dupInt(hNum)
+				);
+		} else {
+			cNum++;
+			status = pthread_create (
+					atom[i], NULL, c_ready,
+					(void *)dupInt(cNum)
+				);
+		}
+		if (status != 0) {
+			fprintf(stderr, "Error creating atom thread\n");
+			exit(1);
+		}
+	}
+
+    /* Determining the maximum number of ethynyl radicals is fairly
+     * straightforward -- it will be the minimum of the number of
+     * hNum and cNum/2.
+     */
+
+    int max_radicals = (hNum < cNum/2 ? hNum : (int)(cNum/2));
+#ifdef VERBOSE
+    printf("Maximum # of radicals expected: %d\n", max_radicals);
+#endif
+
+    wait_to_terminate(max_radicals);
 }
 
 
