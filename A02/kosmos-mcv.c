@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
  */
 
 
-/* 
+/*
  * DECLARE / DEFINE NEEDED VARIABLES IMMEDIATELY BELOW.
  */
 int radicals;
@@ -155,8 +155,8 @@ int combining_h;
 char combiner[MAX_ATOM_NAME_LEN];
 
 pthread_mutex_t mutex;
-pthread_mutex_t wait_c;
-pthread_mutex_t wait_h;
+pthread_cond_t wait_c;
+pthread_cond_t wait_h;
 pthread_mutex_t staging_area;
 
 
@@ -173,8 +173,8 @@ void kosmos_init() {
     combining_c2 = 0;
     combining_h = 0;
     pthread_mutex_init(&mutex, NULL);
-    pthread_mutex_init(&wait_c, NULL);
-    pthread_mutex_init(&wait_h, NULL);
+    pthread_cond_init(&wait_c, NULL);
+    pthread_cond_init(&wait_h, NULL);
     pthread_mutex_init(&staging_area, NULL);
 }
 
@@ -188,7 +188,7 @@ void setCombinder(int id, char* name, char* status) {
     }
 
     // tester
-    printf("After Name: %s, H: %d, C1: %d, C2: %d, countH: %d, countC: %d, id: %d, combiner: %s, status: %s\n", name, combining_h, combining_c1, combining_c2, num_free_h, num_free_c, id, combiner, status);
+    // printf("After Name: %s, H: %d, C1: %d, C2: %d, countH: %d, countC: %d, id: %d, combiner: %s, status: %s\n", name, combining_h, combining_c1, combining_c2, num_free_h, num_free_c, id, combiner, status);
 }
 
 void tryToCreateRadical() {
@@ -206,8 +206,8 @@ void tryToCreateRadical() {
         combining_h = 0;
 
         // Unlock mutexes to prevent race condition
-        pthread_mutex_unlock(&wait_c);
-        pthread_mutex_unlock(&wait_h);
+        pthread_cond_signal(&wait_c);
+        pthread_cond_signal(&wait_h);
     }
     pthread_mutex_unlock(&staging_area);
 }
@@ -219,10 +219,12 @@ void *h_ready( void *arg )
 
     sprintf(name, "h%03d", id);
 
-    pthread_mutex_lock(&wait_h);
-
     // Lock the mutex for critical section
     pthread_mutex_lock(&mutex);
+
+    while(combining_h != 0){
+        pthread_cond_wait(&wait_h, &mutex);
+    }
 
     // Check for free space
     if (combining_h == 0) {
@@ -249,10 +251,12 @@ void *c_ready( void *arg )
 
     sprintf(name, "c%03d", id);
 
-    pthread_mutex_lock(&wait_c);
-
     // Lock the mutex for critical section
     pthread_mutex_lock(&mutex);
+
+    while(combining_c1 != 0 && combining_c2 != 0){
+        pthread_cond_wait(&wait_c, &mutex);
+    }
 
     // Check for free c1 space
     if (combining_c1 == 0) {
@@ -260,7 +264,7 @@ void *c_ready( void *arg )
         num_free_c += 1;
         combining_c1 = id;
         tryToCreateRadical();
-        pthread_mutex_unlock(&wait_c);
+        pthread_cond_signal(&wait_c);
         pthread_mutex_unlock(&mutex);
     } else if (combining_c2 == 0) {
         setCombinder(id, name, "Non-wait");
