@@ -1,0 +1,4 @@
+C:\Users\Poomon\AppData\Local\JetBrains\CLion2023.1\cygwin_cmake\bin\cmake.exe -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=/cygdrive/c/Program Files/JetBrains/CLion 2023.1.2/bin/ninja/cygwin/x64/ninja.exe" -G Ninja -S "/cygdrive/c/Users/Poomon/Desktop/programing projects/C/CSC 360/A03" -B "/cygdrive/c/Users/Poomon/Desktop/programing projects/C/CSC 360/A03/cmake-build-debug"
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /cygdrive/c/Users/Poomon/Desktop/programing projects/C/CSC 360/A03/cmake-build-debug
