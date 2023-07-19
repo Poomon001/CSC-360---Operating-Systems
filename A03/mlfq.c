@@ -203,9 +203,10 @@ void handle_instruction(Instruction_t *instruction, int tick) {
 	if(instruction->burst_time == 0) { 
 		// New Task Arrival
 		// TODO ... Insert your Code Here
-		
 
-
+        // add task_id to task_table
+        Task_t* new_task = &task_table[task_id-1];
+        new_task->id = task_id;
 
 		printf("[%05d] id=%04d NEW\n", tick, task_id);
 	
@@ -215,23 +216,33 @@ void handle_instruction(Instruction_t *instruction, int tick) {
 		int turn_around_time;
 
 		// TODO ... Insert your Code Here
+        // get the waiting_time from task_table;
+        waiting_time = task_table[task_id-1].total_wait_time;
 
+        // get the turn_around_time;  // waiting time + execution time
+        int execution_time = task_table[task_id-1].total_execution_time;
+        turn_around_time = waiting_time + execution_time;
 
-
-
-
-		
 		printf("[%05d] id=%04d EXIT wt=%d tat=%d\n", tick, task_id, 
 			waiting_time, turn_around_time);
+
+        // updating task id in task table
+        task_table[task_id-1].id = 0; // initiate task id to 0
+        task_table[task_id-1].next = NULL; // point next id to null
 
 	} else {
 		// CPU Burst for the task
 		// TODO ... Insert your Code Here
+        if (task_table[task_id-1].current_queue == 0) {
+            task_table[task_id-1].current_queue = 1;
+        }
 
+        // update the burst_time in task_table
+        task_table[task_id-1].burst_time = instruction->burst_time;
+        task_table[task_id-1].remaining_burst_time = instruction->burst_time;
 
-
-
-
+        // en-queue the current task* to the queue
+        enqueue(get_queue_by_id(task_table[task_id-1].current_queue), &task_table[task_id-1]);
 	}
 }
 
@@ -245,7 +256,14 @@ void handle_instruction(Instruction_t *instruction, int tick) {
  */
 Task_t *peek_priority_task() {
 	// TODO ... Insert your Code Here
-
+    if (!is_empty(queue_1)) {
+        return queue_1->start;
+    } else if (!is_empty(queue_2)) {
+        return queue_2->start;
+    } else if (!is_empty(queue_3)) {
+        return queue_3->start;
+    }
+    return NULL;
 
 
 
@@ -281,9 +299,27 @@ void boost(int tick) {
 	
 	// Conduct boost
   	// TODO - Insert your code here
+    // if there is a current task, set it to queue 1 and check its remaining quantum
+    if (current_task != NULL) {
+        current_task->current_queue = 1;
+        if (remaining_quantum > 2) {
+            remaining_quantum = 2;
+        }
+    }
 
+    // place all tasks from queue 3 on queue 1
+    while (queue_3->start != NULL) {
+        Task_t* task = dequeue(queue_3);
+        task->current_queue = 1;
+        enqueue(queue_1, task);
+    }
 
-
+    // place all tasks from queue 2 on queue 1
+    while (queue_2->start != NULL) {
+        Task_t* task = dequeue(queue_2);
+        task->current_queue = 1;
+        enqueue(queue_1, task);
+    }
 	  
 	printf("[%05d] BOOST\n", tick);
 }
@@ -302,12 +338,29 @@ void boost(int tick) {
  *  	is `enqueued` to the end of its associated queue.
  */
 void scheduler() {
-	Task_t *priority_task = peek_priority_task();
+	Task_t *priority_task;
 
 	// TODO ... Insert your Code Here
+    if(current_task != NULL && remaining_quantum == 0){
+        decrease_task_level(current_task);
+        enqueue(get_queue_by_id(current_task->current_queue), current_task);
+        current_task = NULL;
+    }
 
+    priority_task = peek_priority_task();
 
-
+    if(priority_task != NULL){
+        if(current_task == NULL){
+            current_task = dequeue(get_queue_by_id(priority_task->current_queue));
+            remaining_quantum = QUEUE_TIME_QUANTUMS[current_task->current_queue-1];
+        }else{
+            if(current_task->current_queue > priority_task->current_queue){
+                enqueue(get_queue_by_id(current_task->current_queue), current_task);
+                current_task = dequeue(get_queue_by_id(priority_task->current_queue));
+                remaining_quantum = QUEUE_TIME_QUANTUMS[current_task->current_queue-1];
+            }
+        }
+    }
 }
 
 
@@ -324,10 +377,9 @@ void scheduler() {
 void execute_task(int tick) {
 	if(current_task != NULL) {
 		// TODO ... Insert your Code Here
-
-
-
-
+        // decrement quantum and burst times while executing this function to simulate execution
+        remaining_quantum--;
+        current_task->remaining_burst_time--;
 
 		printf("[%05d] id=%04d req=%d used=%d queue=%d\n", tick, 
 			current_task->id, current_task->burst_time, 
@@ -356,12 +408,28 @@ void execute_task(int tick) {
 void update_task_metrics() {
 	// TODO ... Insert your Code Here
 
+    // loop though the task_table to increase total_wait_time
+    Task_t* task1 = queue_1->start;
+    while (task1 != NULL) {
+        task1->total_wait_time += 1;
+        task1 = task1->next;
+    }
 
+    Task_t* task2 = queue_2->start;
+    while (task2 != NULL) {
+        task2->total_wait_time += 1;
+        task2 = task2->next;
+    }
 
+    Task_t* task3 = queue_3->start;
+    while (task3 != NULL) {
+        task3->total_wait_time += 1;
+        task3 = task3->next;
+    }
 
-
-
-
+    if (current_task != NULL) {
+        current_task->total_execution_time += 1;
+    }
 }
 
 
@@ -415,7 +483,7 @@ int main(int argc, char *argv[]) {
 		update_task_metrics();
 
 		execute_task(tick);
-
+//        printf("\nis_inst_complete: %d, queue1: %d, queue2: %d, queue3: %d \n", is_inst_complete, is_empty(queue_1), is_empty(queue_2), is_empty(queue_3));
 
 		if(is_inst_complete && is_empty(queue_1) && is_empty(queue_2) && is_empty(queue_3) && current_task == NULL) {
 			break;
