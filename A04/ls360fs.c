@@ -69,14 +69,15 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    // TODO???
     if (fread(&sb, sizeof(sb), 1, f) != 1) {
         fprintf(stderr, "problems reading superblock\n");
+        fclose(f);
         exit(1);
     }
 
     if (strncmp(sb.magic, FILE_SYSTEM_ID, FILE_SYSTEM_ID_LEN) != 0) {
         fprintf(stderr, "%s is not in the proper format\n", imagename);
+        fclose(f);
         exit(1);
     }
 
@@ -102,13 +103,16 @@ int main(int argc, char *argv[]) {
     directory_entry_t *dir = malloc(num_entries * sizeof(directory_entry_t));   // you can use malloc here
 
     if (dir == NULL) {
-        fprintf(stderr, "cat360fs: problems malloc memory for dir\n");
+        fprintf(stderr, "ls360fs: problems malloc memory for dir\n");
+        fclose(f);
         exit(1);
     }
 
     fseek(f, sb.dir_start * sb.block_size, SEEK_SET);
     if (fread(dir, sizeof(directory_entry_t), num_entries, f) != num_entries) {
-        fprintf(stderr, "cat360fs: problems reading directory from image\n");
+        fprintf(stderr, "ls360fs: problems reading directory from image\n");
+        fclose(f);
+        free(dir);
         exit(1);
     }
 
@@ -131,7 +135,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    free(dir);
     fclose(f);
+    free(dir);
     return 0;
 }

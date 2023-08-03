@@ -39,11 +39,13 @@ int main(int argc, char *argv[]) {
 
     if (fread(&sb, sizeof(sb), 1, f) != 1) {
         fprintf(stderr, "problems reading superblock\n");
+        fclose(f);
         exit(1);
     }
 
     if (strncmp(sb.magic, FILE_SYSTEM_ID, FILE_SYSTEM_ID_LEN) != 0) {
         fprintf(stderr, "%s is not in the proper format\n", imagename);
+        fclose(f);
         exit(1);
     }
 
@@ -74,12 +76,15 @@ int main(int argc, char *argv[]) {
 
     if (dir == NULL) {
         fprintf(stderr, "cat360fs: problems malloc memory for dir\n");
+        fclose(f);
         exit(1);
     }
 
     fseek(f, sb.dir_start * sb.block_size, SEEK_SET);
     if (fread(dir, sizeof(directory_entry_t), num_entries, f) != num_entries) {
         fprintf(stderr, "cat360fs: problems reading directory from image\n");
+        fclose(f);
+        free(dir);
         exit(1);
     }
 
@@ -101,8 +106,8 @@ int main(int argc, char *argv[]) {
     /* Hmm. Maybe file doesn't even exist... */
     if (ii == -1) {
         fprintf(stderr, "cat360fs: file not found (%s)\n", filename);
-        free(dir);
         fclose(f);
+        free(dir);
         exit(1);
     }
 
@@ -120,8 +125,8 @@ int main(int argc, char *argv[]) {
 
     if (fat == NULL) {
         fprintf(stderr, "cat360fs: problems malloc memory for FAT\n");
-        free(dir);
         fclose(f);
+        free(dir);
         exit(1);
     }
 
@@ -129,9 +134,9 @@ int main(int argc, char *argv[]) {
 
     if (fread(fat, sizeof(unsigned int), num_fat_entries, f) != num_fat_entries) {
         fprintf(stderr, "cat360fs: fewer FAT entries than expected\n");
+        fclose(f);
         free(fat);
         free(dir);
-        fclose(f);
         exit(1);
     }
 
@@ -143,9 +148,9 @@ int main(int argc, char *argv[]) {
     char *buffer = malloc(sb.block_size);
     if (buffer == NULL) {
         fprintf(stderr, "cat360fs: problems malloc memory during file read\n");
+        fclose(f);
         free(fat);
         free(dir);
-        fclose(f);
         exit(1);
     }
 
@@ -190,9 +195,9 @@ int main(int argc, char *argv[]) {
     }
 
     /* Tidy up */
+    fclose(f);
     free(fat);
     free(dir);
     free(buffer);
-    fclose(f);
     return 0;
 }

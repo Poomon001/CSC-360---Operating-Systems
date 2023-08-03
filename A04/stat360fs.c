@@ -34,14 +34,17 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    if (fread(&sb, sizeof(sb), 1, f) != 1) {
+    if (fread(&sb, sizeof(superblock_entry_t), 1, f) != 1) {
         fprintf(stderr, "problems reading superblock\n");
+        fclose(f);
+        exit(1);
     }
 
-    // TODO: Double check this
     if (strncmp(sb.magic, FILE_SYSTEM_ID, FILE_SYSTEM_ID_LEN) != 0) {
         fprintf(stderr, "%s is not in the proper format\n",
                 imagename);
+        fclose(f);
+        exit(1);
     }
 
     //step 2
@@ -64,9 +67,8 @@ int main(int argc, char *argv[]) {
 
     printf("%s (%s)\n\n", sb.magic, filename);
     printf("------------------------------------------------\n");
-    printf("Bsz   Bcnt   FATcnt    DIRst    DIRcnt\n");
-    printf("%-5d %-9d %-8d %-10d %-10d\n", sb.block_size, sb.num_blocks, sb.fat_blocks, sb.dir_start, sb.dir_blocks);
-    printf("\n");
+    printf("Bsz     Bcnt     FATst     FATcnt     DIRst     DIRcnt\n");
+    printf("%-7d %-12d %-9d %-9d %-11d %d\n", sb.block_size, sb.num_blocks, sb.fat_start, sb.fat_blocks, sb.dir_start, sb.dir_blocks);
     printf("\n");
     // Step 3
 
@@ -79,6 +81,7 @@ int main(int argc, char *argv[]) {
 
     if (fat_data == NULL) {
         fprintf(stderr, "problems allocating memory for fat\n");
+        fclose(f);
         exit(1);
     }
 
@@ -87,15 +90,17 @@ int main(int argc, char *argv[]) {
     int num_reserved = 0;
     int num_allocated = 0;
 
-    if (fread(fat_data, SIZE_FAT_ENTRY, num_fat, f) != num_fat) {
+    if (fread(fat_data, sizeof(int), num_fat, f) != num_fat) {
         fprintf(stderr, "Error reading FAT from image -- number " \
             "of FAT entries not what expected.\n");
+        fclose(f);
+        free(fat_data);
         exit(1);
     }
 
     //step 4
 
-    for (i = 0; i < num_fat; i++) {
+    for (i = 0; i < sb.num_blocks; i++) {
         fat_data[i] = ntohl(fat_data[i]);
         if (fat_data[i] == FAT_AVAILABLE) {
             num_available++;
